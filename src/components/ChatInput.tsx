@@ -1,98 +1,159 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, RotateCcw } from 'lucide-react';
-import { Provider } from '../lib/types';
+import { useState, FormEvent } from 'react';
+import { Send, AlertCircle, RefreshCcw, Wifi, WifiOff, Server, Settings, ShieldAlert } from 'lucide-react';
+import { ProviderType } from '../lib/types';
 
 interface ChatInputProps {
-  onSend: (message: string) => Promise<void>;
+  onSend: (content: string) => Promise<void>;
   onRetry?: () => void;
-  provider: Provider;
+  provider: ProviderType;
   disabled?: boolean;
   error?: string | null;
   lastMessage?: string;
 }
 
-export function ChatInput({
-  onSend,
-  onRetry,
-  provider,
-  disabled,
-  error,
-  lastMessage
-}: ChatInputProps) {
-  const [message, setMessage] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export const ChatInput = ({ 
+  onSend, 
+  onRetry, 
+  provider, 
+  disabled, 
+  error, 
+  lastMessage 
+}: ChatInputProps) => {
+  const [input, setInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [message]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || disabled) return;
-
-    setMessage('');
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+    const trimmedInput = input.trim();
+    
+    if (trimmedInput && !disabled && !isSubmitting) {
+      try {
+        setIsSubmitting(true);
+        await onSend(trimmedInput);
+        setInput('');
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
-    await onSend(message);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
-    }
-  };
-
-  const isConnectionError = error?.toLowerCase().includes('connection refused');
+  // Determine error type for appropriate UI feedback
+  const isProxyError = error?.toLowerCase().includes('proxy') || 
+                      error?.toLowerCase().includes('connection refused');
+  const isNetworkError = error?.toLowerCase().includes('network') || 
+                        error?.toLowerCase().includes('unable to connect') ||
+                        error?.toLowerCase().includes('failed to fetch');
+  const isServerError = error?.includes('500') || 
+                       error?.toLowerCase().includes('server error') ||
+                       error?.toLowerCase().includes('internal server error');
+  const isTimeoutError = error?.toLowerCase().includes('timeout') ||
+                        error?.toLowerCase().includes('took too long');
+  const isAuthError = error?.toLowerCase().includes('api key') || 
+                     error?.toLowerCase().includes('unauthorized') ||
+                     error?.toLowerCase().includes('authentication');
+  const isRateLimitError = error?.toLowerCase().includes('rate limit') ||
+                          error?.toLowerCase().includes('too many requests');
 
   return (
-    <form onSubmit={handleSubmit} className="relative">
+    <div className="py-4 space-y-2">
       {error && (
-        <div className="absolute -top-16 left-0 right-0">
-          <div className={`p-3 rounded-lg text-sm ${
-            isConnectionError ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-800'
-          }`}>
-            <div className="flex items-start gap-2">
-              <div className="flex-1">{error}</div>
-              {onRetry && (
-                <button
-                  type="button"
-                  onClick={onRetry}
-                  className={`p-1 rounded hover:bg-white/50 transition-colors ${
-                    isConnectionError ? 'text-amber-700' : 'text-red-700'
-                  }`}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </button>
-              )}
+        <div className={`flex flex-col gap-3 p-4 text-sm rounded-2xl mb-2 ${
+          isServerError ? 'bg-red-50 border border-red-200 text-red-800' :
+          isNetworkError ? 'bg-amber-50 border border-amber-200 text-amber-800' :
+          isAuthError ? 'bg-violet-50 border border-violet-200 text-violet-800' :
+          'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-start gap-2">
+            {isNetworkError ? (
+              <WifiOff className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            ) : isServerError ? (
+              <Server className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            ) : isAuthError ? (
+              <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <div className="font-medium mb-1">
+                {isServerError ? 'Server Error' :
+                 isNetworkError ? 'Network Error' :
+                 isTimeoutError ? 'Request Timeout' :
+                 isAuthError ? 'Authentication Error' :
+                 isRateLimitError ? 'Rate Limit Exceeded' :
+                 'Error'}
+              </div>
+              <div className="whitespace-pre-wrap">{error}</div>
             </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            {onRetry && lastMessage && (
+              <button
+                onClick={onRetry}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                  isServerError ? 'bg-red-100 hover:bg-red-200 text-red-700' :
+                  isNetworkError ? 'bg-amber-100 hover:bg-amber-200 text-amber-700' :
+                  isAuthError ? 'bg-violet-100 hover:bg-violet-200 text-violet-700' :
+                  'bg-red-100 hover:bg-red-200 text-red-700'
+                }`}
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Retry last message
+              </button>
+            )}
+            
+            {isNetworkError && (
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-700 rounded-lg transition-colors"
+              >
+                <Wifi className="w-4 h-4" />
+                Check Connection
+              </button>
+            )}
+            
+            {isServerError && (
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+              >
+                <Server className="w-4 h-4" />
+                Reload Application
+              </button>
+            )}
+
+            {isAuthError && (
+              <button
+                onClick={() => document.querySelector<HTMLButtonElement>('[title="Settings"]')?.click()}
+                className="flex items-center gap-2 px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 rounded-lg transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Check API Settings
+              </button>
+            )}
           </div>
         </div>
       )}
-
-      <div className="relative flex items-start gap-2">
-        <textarea
-          ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Send a message..."
-          className="flex-1 resize-none overflow-hidden bg-zinc-100 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          rows={1}
-          disabled={disabled}
+      
+      <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={`Message ${provider}...`}
+          disabled={disabled || isSubmitting}
+          className="flex-1 p-3 bg-zinc-100/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[44px] max-h-32 resize-none transition-colors disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={!message.trim() || disabled}
-          className="p-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={!input.trim() || disabled || isSubmitting}
+          className="p-3 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-indigo-500 disabled:hover:to-indigo-600"
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-5 h-5" />
         </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
-}
+};

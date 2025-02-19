@@ -7,6 +7,7 @@ export const providers: Record<ProviderType, Provider> = {
     name: 'OpenAI',
     description: 'GPT-3.5, GPT-4, and DALL·E models',
     requiresKey: true,
+    supportsProxy: true,
     capabilities: ['chat', 'code', 'analysis']
   },
   anthropic: {
@@ -14,6 +15,7 @@ export const providers: Record<ProviderType, Provider> = {
     name: 'Anthropic',
     description: 'Claude models with long context support',
     requiresKey: true,
+    supportsProxy: true,
     capabilities: ['chat', 'code', 'analysis']
   },
   google: {
@@ -21,6 +23,7 @@ export const providers: Record<ProviderType, Provider> = {
     name: 'Google AI',
     description: 'Gemini series models including Pro 1.5',
     requiresKey: true,
+    supportsProxy: true,
     capabilities: ['chat', 'code', 'analysis', 'vision']
   },
   cloudflare: {
@@ -28,6 +31,7 @@ export const providers: Record<ProviderType, Provider> = {
     name: 'Cloudflare',
     description: 'Workers AI models',
     requiresKey: false,
+    supportsProxy: false,
     capabilities: ['chat']
   },
   openrouter: {
@@ -35,6 +39,7 @@ export const providers: Record<ProviderType, Provider> = {
     name: 'OpenRouter',
     description: 'Access to multiple model providers',
     requiresKey: true,
+    supportsProxy: true,
     capabilities: ['chat', 'code']
   }
 };
@@ -69,7 +74,6 @@ export const getProviderModels = async (provider: ProviderType): Promise<Model[]
       name: 'Auto (Best Available)',
       provider,
       capabilities: ['chat', 'code', 'analysis'],
-      context_length: 200000,
       isAuto: true,
       description: 'Automatically selects the best available model'
     };
@@ -85,106 +89,96 @@ const getProviderStaticModels = async (provider: ProviderType): Promise<Model[]>
     case 'openai':
       return [
         {
-          id: 'gpt-4-turbo-preview',
+          id: 'gpt-4-1106-preview',
           name: 'GPT-4 Turbo',
           provider: 'openai',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 128000
+          context_length: 128000,
+          description: 'Most powerful model with 128k context window'
         },
         {
           id: 'gpt-4-0125-preview',
           name: 'GPT-4 Turbo (0125)',
           provider: 'openai',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 128000
+          context_length: 128000,
+          description: 'Latest GPT-4 model with improved accuracy'
         },
         {
           id: 'gpt-4-vision-preview',
           name: 'GPT-4 Vision',
           provider: 'openai',
           capabilities: ['chat', 'code', 'analysis', 'vision'],
-          context_length: 128000
+          context_length: 128000,
+          description: 'GPT-4 with image understanding capabilities'
         },
         {
           id: 'gpt-4',
           name: 'GPT-4',
           provider: 'openai',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 8192
+          context_length: 8192,
+          description: 'Stable GPT-4 release'
         },
         {
           id: 'gpt-4-32k',
           name: 'GPT-4 (32K)',
           provider: 'openai',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 32768
+          context_length: 32768,
+          description: 'GPT-4 with extended context window'
         },
         {
           id: 'gpt-3.5-turbo-0125',
           name: 'GPT-3.5 Turbo (0125)',
           provider: 'openai',
           capabilities: ['chat', 'code'],
-          context_length: 16385
+          context_length: 16385,
+          description: 'Latest GPT-3.5 model with improved instruction following'
         },
         {
           id: 'gpt-3.5-turbo',
           name: 'GPT-3.5 Turbo',
           provider: 'openai',
           capabilities: ['chat', 'code'],
-          context_length: 16384
-        },
-        {
-          id: 'gpt-3.5-turbo-16k',
-          name: 'GPT-3.5 Turbo (16K)',
-          provider: 'openai',
-          capabilities: ['chat', 'code'],
-          context_length: 16384
+          context_length: 16384,
+          description: 'Fast and efficient for most tasks'
         }
       ];
 
     case 'anthropic':
       return [
         {
-          id: 'claude-3-opus',
+          id: 'claude-3-opus-20240229',
           name: 'Claude 3 Opus',
           provider: 'anthropic',
           capabilities: ['chat', 'code', 'analysis', 'vision'],
-          context_length: 200000
+          context_length: 200000,
+          description: 'Most powerful Claude model with highest reasoning capabilities'
         },
         {
-          id: 'claude-3-sonnet',
+          id: 'claude-3-sonnet-20240229',
           name: 'Claude 3 Sonnet',
           provider: 'anthropic',
           capabilities: ['chat', 'code', 'analysis', 'vision'],
-          context_length: 200000
+          context_length: 200000,
+          description: 'Balanced performance and efficiency'
         },
         {
-          id: 'claude-3-haiku',
+          id: 'claude-3-haiku-20240307',
           name: 'Claude 3 Haiku',
           provider: 'anthropic',
           capabilities: ['chat', 'code', 'vision'],
-          context_length: 200000
+          context_length: 200000,
+          description: 'Fastest Claude model optimized for quick responses'
         },
         {
           id: 'claude-2.1',
           name: 'Claude 2.1',
           provider: 'anthropic',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 200000
-        },
-        {
-          id: 'claude-2.0',
-          name: 'Claude 2.0',
-          provider: 'anthropic',
-          capabilities: ['chat', 'code', 'analysis'],
-          context_length: 100000
-        },
-        {
-          id: 'claude-instant-1.2',
-          name: 'Claude Instant 1.2',
-          provider: 'anthropic',
-          capabilities: ['chat', 'code'],
-          context_length: 100000
+          context_length: 200000,
+          description: 'Previous generation Claude with strong reliability'
         }
       ];
 
@@ -207,59 +201,56 @@ const getProviderStaticModels = async (provider: ProviderType): Promise<Model[]>
           description: 'Vision-enabled Gemini 1.5 with advanced image understanding'
         },
         {
-          id: 'gemini-1.0-pro',
-          name: 'Gemini Pro 1.0',
+          id: 'gemini-pro',
+          name: 'Gemini Pro',
           provider: 'google',
           capabilities: ['chat', 'code', 'analysis'],
           context_length: 32768,
-          description: 'Previous generation Gemini model'
+          description: 'Stable Gemini release with good performance'
         },
         {
-          id: 'gemini-1.0-pro-vision',
-          name: 'Gemini Pro Vision 1.0',
+          id: 'gemini-pro-vision',
+          name: 'Gemini Pro Vision',
           provider: 'google',
           capabilities: ['chat', 'vision'],
           context_length: 16384,
-          description: 'Previous generation vision model'
+          description: 'Vision capabilities for standard Gemini Pro'
         }
       ];
 
     case 'cloudflare':
       return [
         {
-          id: '@cf/meta/llama-2-7b-chat-int8',
-          name: 'Llama 2 7B Chat',
-          provider: 'cloudflare',
-          capabilities: ['chat'],
-          context_length: 4096
-        },
-        {
-          id: '@cf/meta/llama-2-13b-chat-int8',
-          name: 'Llama 2 13B Chat',
-          provider: 'cloudflare',
-          capabilities: ['chat'],
-          context_length: 4096
-        },
-        {
           id: '@cf/mistral/mistral-7b-instruct-v0.1',
           name: 'Mistral 7B Instruct',
           provider: 'cloudflare',
           capabilities: ['chat'],
-          context_length: 8192
+          context_length: 8192,
+          description: 'Efficient open-source model'
         },
         {
-          id: '@cf/tiiuae/falcon-7b-instruct',
-          name: 'Falcon 7B Instruct',
+          id: '@cf/meta/llama-2-70b-chat-int8',
+          name: 'Llama 2 70B Chat',
+          provider: 'cloudflare',
+          capabilities: ['chat', 'code'],
+          context_length: 4096,
+          description: 'Largest Llama 2 model optimized for chat'
+        },
+        {
+          id: '@cf/thebloke/neural-chat-7b-v3-1-awq',
+          name: 'Neural Chat 7B',
           provider: 'cloudflare',
           capabilities: ['chat'],
-          context_length: 2048
+          context_length: 8192,
+          description: 'Optimized chat model with good performance'
         },
         {
           id: '@cf/thebloke/codellama-34b-instruct-awq',
           name: 'CodeLlama 34B Instruct',
           provider: 'cloudflare',
           capabilities: ['chat', 'code'],
-          context_length: 16384
+          context_length: 16384,
+          description: 'Specialized for code-related tasks'
         }
       ];
 
@@ -270,42 +261,40 @@ const getProviderStaticModels = async (provider: ProviderType): Promise<Model[]>
           name: 'GPT-4 Turbo (via OpenRouter)',
           provider: 'openrouter',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 128000
+          context_length: 128000,
+          description: 'Latest GPT-4 model through OpenRouter'
         },
         {
           id: 'anthropic/claude-3-opus',
           name: 'Claude 3 Opus (via OpenRouter)',
           provider: 'openrouter',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 200000
+          context_length: 200000,
+          description: 'Most capable Claude model'
         },
         {
           id: 'anthropic/claude-3-sonnet',
           name: 'Claude 3 Sonnet (via OpenRouter)',
           provider: 'openrouter',
           capabilities: ['chat', 'code', 'analysis'],
-          context_length: 200000
-        },
-        {
-          id: 'anthropic/claude-3-haiku',
-          name: 'Claude 3 Haiku (via OpenRouter)',
-          provider: 'openrouter',
-          capabilities: ['chat', 'code'],
-          context_length: 200000
+          context_length: 200000,
+          description: 'Balanced Claude model'
         },
         {
           id: 'google/gemini-pro',
           name: 'Gemini Pro (via OpenRouter)',
           provider: 'openrouter',
           capabilities: ['chat', 'code'],
-          context_length: 32768
+          context_length: 32768,
+          description: 'Google\'s latest model'
         },
         {
-          id: 'meta-llama/llama-2-70b-chat',
-          name: 'Llama 2 70B Chat (via OpenRouter)',
+          id: 'mistralai/mixtral-8x7b-instruct',
+          name: 'Mixtral 8x7B (via OpenRouter)',
           provider: 'openrouter',
           capabilities: ['chat', 'code'],
-          context_length: 4096
+          context_length: 32768,
+          description: 'High-performance open model'
         }
       ];
 
@@ -328,26 +317,25 @@ export const selectBestModel = (provider: ProviderType, models: Model[]): string
   switch (provider) {
     case 'openai':
       // Prefer GPT-4 Turbo, fallback to GPT-3.5 Turbo
-      return availableModels.find(m => m.id === 'gpt-4-turbo-preview')?.id ||
-             availableModels.find(m => m.id === 'gpt-3.5-turbo')?.id ||
+      return availableModels.find(m => m.id === 'gpt-4-0125-preview')?.id ||
+             availableModels.find(m => m.id === 'gpt-3.5-turbo-0125')?.id ||
              availableModels[0]?.id;
              
     case 'anthropic':
       // Prefer Claude 3 Opus, fallback to Sonnet or earlier versions
-      return availableModels.find(m => m.id === 'claude-3-opus')?.id ||
-             availableModels.find(m => m.id === 'claude-3-sonnet')?.id ||
-             availableModels.find(m => m.id.includes('claude-2'))?.id ||
+      return availableModels.find(m => m.id === 'claude-3-opus-20240229')?.id ||
+             availableModels.find(m => m.id === 'claude-3-sonnet-20240229')?.id ||
              availableModels[0]?.id;
 
     case 'google':
       // Default to Gemini 1.5 Pro for best performance
       return availableModels.find(m => m.id === 'gemini-1.5-pro')?.id ||
-             availableModels.find(m => m.id === 'gemini-1.0-pro')?.id ||
+             availableModels.find(m => m.id === 'gemini-pro')?.id ||
              availableModels[0]?.id;
 
     case 'cloudflare':
-      // Prefer largest Llama model
-      return availableModels.find(m => m.id.includes('llama-2-13b'))?.id ||
+      // Prefer largest available model
+      return availableModels.find(m => m.id.includes('70b'))?.id ||
              availableModels.find(m => m.id.includes('mistral'))?.id ||
              availableModels[0]?.id;
 
@@ -373,13 +361,13 @@ export const getDefaultModel = (type: ProviderType): string => {
   // For other providers, select a specific default model
   switch (type) {
     case 'openai':
-      return 'gpt-3.5-turbo';
+      return 'gpt-3.5-turbo-0125';
     case 'anthropic':
-      return 'claude-3-sonnet';
+      return 'claude-3-sonnet-20240229';
     case 'google':
       return 'gemini-1.5-pro';
     case 'cloudflare':
-      return '@cf/meta/llama-2-13b-chat-int8';
+      return '@cf/mistral/mistral-7b-instruct-v0.1';
     default:
       return '';
   }
@@ -424,5 +412,6 @@ export const getModelDisplay = (providerType: ProviderType, modelId: string): st
     .join(' ')
     .replace(/([0-9]+[A-Z])/g, ' $1') // Add space before numbers followed by uppercase
     .replace(/([A-Z][a-z])/g, ' $1')  // Add space before capital letters
+    .replace(/\d{8}$/, '')  // Remove date stamps from model versions
     .trim();
 };

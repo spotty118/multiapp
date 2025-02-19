@@ -1,8 +1,9 @@
-import { Chat, ApiKeys } from './types';
+import { Chat, ApiKeys, GatewayURLs } from './types';
 
 const CHATS_KEY = 'multimind-chats';
 const API_KEYS_KEY = 'multimind-api-keys';
 const GATEWAY_URLS_KEY = 'multimind-gateway-urls';
+const LITELLM_PROXY_URL_KEY = 'multimind-litellm-proxy-url';
 
 // Initialize store with error handling
 const initializeStore = () => {
@@ -86,7 +87,7 @@ export const getApiKeys = (): ApiKeys => {
   }
 };
 
-export const saveGatewayUrls = (urls: Record<string, string>) => {
+export const saveGatewayUrls = (urls: GatewayURLs) => {
   try {
     localStorage.setItem(GATEWAY_URLS_KEY, JSON.stringify(urls));
   } catch (error) {
@@ -95,12 +96,39 @@ export const saveGatewayUrls = (urls: Record<string, string>) => {
   }
 };
 
-export const getGatewayUrls = (): Record<string, string> => {
+export const getGatewayUrls = (): GatewayURLs => {
   try {
     const urls = localStorage.getItem(GATEWAY_URLS_KEY);
     return urls ? JSON.parse(urls) : {};
   } catch (error) {
     console.error('Failed to get gateway URLs:', error);
     return {};
+  }
+};
+
+export const saveLiteLLMProxyUrl = (url: string) => {
+  try {
+    localStorage.setItem(LITELLM_PROXY_URL_KEY, url);
+  } catch (error) {
+    console.error('Failed to save LiteLLM proxy URL:', error);
+    throw new Error('Failed to save proxy URL. Please try again.');
+  }
+};
+
+export const getLiteLLMProxyUrl = (): string | null => {
+  try {
+    return localStorage.getItem(LITELLM_PROXY_URL_KEY);
+  } catch (error) {
+    console.error('Failed to get LiteLLM proxy URL:', error);
+    return null;
+  }
+};
+
+export const clearLiteLLMProxyUrl = () => {
+  try {
+    localStorage.removeItem(LITELLM_PROXY_URL_KEY);
+  } catch (error) {
+    console.error('Failed to clear LiteLLM proxy URL:', error);
+    throw new Error('Failed to clear proxy URL. Please try again.');
   }
 };

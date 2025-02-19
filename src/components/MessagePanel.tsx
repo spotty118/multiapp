@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { StopCircle, Trash2 } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
-import { Chat } from '../lib/types';
+import { Chat, Message } from '../lib/types';
 import { ChatInput } from './ChatInput';
 import { ModelDropdown } from './ModelDropdown';
+import { ProxyDialog } from './ProxyDialog';
 import { SettingsDialog } from './SettingsDialog';
+import { ProxyStatusIndicator } from './ProxyStatusIndicator';
+import { getLiteLLMProxyUrl } from '../lib/store';
+import { virtualProxyServer } from '../lib/virtualProxy/VirtualProxyServer';
 
 interface MessagePanelProps {
   chat: Chat;
@@ -13,7 +17,7 @@ interface MessagePanelProps {
   error?: string | null;
   onStopResponse?: () => void;
   onClearChat?: () => void;
-  onModelChange?: (model: string, context: Chat['messages']) => void;
+  onModelChange?: (model: string) => void;
 }
 
 export const MessagePanel = ({
@@ -27,6 +31,7 @@ export const MessagePanel = ({
 }: MessagePanelProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [proxyUrl, setProxyUrl] = useState<string | null>(getLiteLLMProxyUrl());
 
   useEffect(() => {
     // Update last failed message when an error occurs
@@ -55,9 +60,12 @@ export const MessagePanel = ({
     }
   };
 
-  const handleModelChange = (model: string) => {
-    if (onModelChange) {
-      onModelChange(model, chat.messages); // Pass the chat context to the new model
+  const handleStopServer = async () => {
+    try {
+      await virtualProxyServer.stop();
+      setProxyUrl(null);
+    } catch (error) {
+      console.error('Failed to stop server:', error);
     }
   };
 
@@ -69,6 +77,11 @@ export const MessagePanel = ({
             {chat.title || 'New Chat'}
           </h2>
           <div className="flex items-center gap-2">
+            <ProxyStatusIndicator 
+              url={proxyUrl} 
+              onStopServer={virtualProxyServer.isRunning() ? handleStopServer : undefined}
+            />
+            <ProxyDialog onServerStarted={setProxyUrl} />
             <SettingsDialog />
             {isLoading && onStopResponse && (
               <button
@@ -94,30 +107,23 @@ export const MessagePanel = ({
           <ModelDropdown
             provider={chat.provider}
             model={chat.model}
-            onModelChange={handleModelChange}
+            onModelChange={onModelChange || (() => {})}
           />
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          {chat.messages.map((message, index) => (
-            <ChatMessage
-              key={`${message.timestamp}-${index}`}
-              role={message.role}
-              content={message.content}
-              timestamp={message.timestamp}
-              model={message.model}
-            />
-          ))}
-          {error && lastFailedMessage && (
-            <div className="text-red-500 mt-4">
-              <p className="font-medium">Error: {error}</p>
-              <p className="text-sm mt-1">Failed to send: "{lastFailedMessage}"</p>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+      <div className="flex-1 overflow-y-auto min-h-0 py-4 space-y-4 scrollbar-thin">
+        {chat.messages.map((message) => (
+          <div key={message.id} className="px-4">
+            <ChatMessage message={message} />
+          </div>
+        ))}
+        {isLoading && (
+          <div className="px-4">
+            <div className="animate-pulse text-zinc-500">Thinking...</div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="border-t border-zinc-200">

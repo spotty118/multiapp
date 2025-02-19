@@ -12,6 +12,7 @@ interface OpenAIModelsResponse {
 
 export class OpenAIClient extends BaseApiClient {
   protected formatRequest(message: string, model: string) {
+    // Return only the required OpenAI API fields
     return {
       messages: [{
         role: 'user',
@@ -29,14 +30,12 @@ export class OpenAIClient extends BaseApiClient {
       throw new Error('OpenAI API key is required');
     }
 
-    const gatewayUrl = getGatewayUrls().openai || 'https://api.openai.com/v1';
-    console.log('Using Gateway URL:', gatewayUrl); // Log the gateway URL for debugging
-    const endpoint = `${gatewayUrl}/chat/completions`;
+    // Get custom gateway URL if configured
+    const gatewayUrl = getGatewayUrls().openai;
+    const baseUrl = gatewayUrl || 'https://api.openai.com/v1';
+    const endpoint = `${baseUrl}/chat/completions`;
 
     try {
-      console.log('Making request to:', endpoint);
-      console.log('Request data:', data);
-
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -45,9 +44,6 @@ export class OpenAIClient extends BaseApiClient {
         },
         body: JSON.stringify(data)
       });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -66,6 +62,7 @@ export class OpenAIClient extends BaseApiClient {
   protected override parseModelsResponse(response: OpenAIModelsResponse): Model[] {
     return response.data
       .filter(model => 
+        // Only include chat models
         model.id.includes('gpt') && 
         !model.id.includes('instruct')
       )
@@ -80,8 +77,7 @@ export class OpenAIClient extends BaseApiClient {
           'chat',
           'code',
           ...(model.id.includes('gpt-4') ? ['analysis'] as const : [])
-        ],
-        context_length: model.id.includes('gpt-4') ? 8192 : 4096 // Default context lengths
+        ]
       }));
   }
 
@@ -91,8 +87,9 @@ export class OpenAIClient extends BaseApiClient {
       throw new Error('OpenAI API key is required');
     }
 
-    const gatewayUrl = getGatewayUrls().openai || 'https://api.openai.com/v1';
-    const endpoint = `${gatewayUrl}/models`;
+    const gatewayUrl = getGatewayUrls().openai;
+    const baseUrl = gatewayUrl || 'https://api.openai.com/v1';
+    const endpoint = `${baseUrl}/models`;
 
     try {
       const response = await fetch(endpoint, {

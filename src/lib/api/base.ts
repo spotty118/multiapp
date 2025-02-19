@@ -1,7 +1,7 @@
-import { ProviderType, APIError, Model, ApiKeys } from '../types';
+import { ProviderType, APIError, Model } from '../types';
 import { getApiKeys } from '../store';
 import { validateApiKey } from '../validation';
-import { getProvider, isValidProvider } from '../providers';
+import { getProvider } from '../providers';
 
 const API_TIMEOUT = 30000; // 30 seconds
 const MAX_RETRIES = 3;
@@ -15,13 +15,10 @@ const SERVER_ERROR_MESSAGES: Record<number, string> = {
 
 export abstract class BaseApiClient {
   protected readonly providerType: ProviderType;
-  protected apiKeys: Record<ProviderType, string | undefined>;
+  protected apiKeys: Record<ProviderType, string>;
   protected controller: AbortController | null = null;
 
   constructor(providerType: ProviderType) {
-    if (!isValidProvider(providerType)) {
-      throw new APIError(`Invalid provider type: ${providerType}`, 400);
-    }
     this.providerType = providerType;
     this.apiKeys = getApiKeys();
   }
@@ -43,9 +40,6 @@ export abstract class BaseApiClient {
     const provider = getProvider(this.providerType);
     if (provider.requiresKey) {
       const apiKey = this.apiKeys[this.providerType];
-      if (!apiKey) {
-        throw new APIError(`API key for provider ${this.providerType} is missing`, 401);
-      }
       const validation = validateApiKey(this.providerType, apiKey);
       
       if (!validation.isValid) {
@@ -97,56 +91,50 @@ export abstract class BaseApiClient {
     try {
       this.controller = new AbortController();
       
-      const apiKey = this.apiKeys[this.providerType];
-      if (!apiKey) {
-        throw new APIError(`API key for provider ${this.providerType} is missing`, 401);
-      }
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify(data),
         signal: this.controller.signal
       });
 
       if (!response.ok) {
-        throw new APIError(`Request failed with status ${response.status}`, response.status);
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.error?.message || 
+          SERVER_ERROR_MESSAGES[response.status] ||
+          `Request failed with status ${response.status}`;
+
+        throw new APIError(
+          errorMessage,
+          response.status,
+          errorData?.error?.type,
+          errorData?.error?.code
+        );
       }
 
       return await response.json();
-    } catch (error: unknown) {
-      // Type guard to check if error is an Error object
-      const isError = (err: unknown): err is Error => err instanceof Error;
-
+    } catch (error) {
       // Don't retry if request was cancelled
-      if (isError(error) && error.name === 'AbortError') {
+      if (error.name === 'AbortError') {
         throw new APIError('Request cancelled');
       }
 
-      // Type-safe error handling
-      const errorMessage = isError(error) ? error.message ?? 'Unknown error' : String(error);
-      const isServerError = error instanceof APIError && (error as APIError)?.status >= 500;
+      const isServerError = error instanceof APIError && error.status >= 500;
       const shouldRetry = retryCount < MAX_RETRIES && (
-        (isError(error) && (
-          error.name === 'TypeError' || // Network error
-          error.message?.includes('fetch') // Fetch error
-        )) ||
+        error.name === 'TypeError' || // Network error
+        error.message.includes('fetch') || // Fetch error
         isServerError // Server error
       );
 
       if (shouldRetry) {
-        console.warn(`Retrying request. Error: ${errorMessage}`);
         const delay = RETRY_DELAY * Math.pow(2, retryCount);
         await new Promise(resolve => setTimeout(resolve, delay));
         return this.makeRequest(url, data, retryCount + 1);
       }
 
-      if (isError(error) && error.message) {
-        console.error(`Error: ${error.message}`);
-      }
-      throw new APIError('An unexpected error occurred');
+      throw error;
     } finally {
       this.controller = null;
     }
@@ -160,9 +148,7 @@ export abstract class BaseApiClient {
     const requestData = this.formatRequest(message, model);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/chat';
-      const endpoint = requestData.endpoint || '/completions';
-      const response = await this.makeRequest(`${baseUrl}${endpoint}`, requestData);
+      const response = await this.makeRequest(requestData.endpoint || '/chat/completions', requestData);
       const content = this.extractResponseContent(response);
 
       return {
@@ -174,21 +160,15 @@ export abstract class BaseApiClient {
       };
     } catch (error) {
       // Enhance error message for common issues
-      if (this.isError(error)) {
-        if (error.message?.includes('fetch')) {
-          throw new APIError(
-            'Network error. Please check your internet connection.',
-            0,
-            'network_error'
-          );
-        }
+      if (error.message.includes('fetch')) {
+        throw new APIError(
+          'Network error. Please check your internet connection.',
+          0,
+          'network_error'
+        );
       }
 
       throw error;
     }
-  }
-
-  private isError(error: unknown): error is Error {
-    return error instanceof Error;
   }
 }

@@ -1,5 +1,6 @@
 import { BaseApiClient } from './base';
 import { Model, APIError } from '../types';
+import { getGatewayUrls } from '../store';
 
 interface GoogleChatRequest {
   contents: Array<{
@@ -54,6 +55,10 @@ export class GoogleClient extends BaseApiClient {
     // If model is 'auto', use the default Gemini Pro model
     const actualModel = model === 'auto' ? 'gemini-1.0-pro' : model;
     
+    // Determine if we're using Cloudflare or direct API
+    const gatewayUrl = getGatewayUrls().google;
+    const isDirectApi = !gatewayUrl; // If no gateway URL, use direct API
+
     // Format request according to Google's API specifications
     const request: GoogleChatRequest = {
       contents: [{
@@ -70,12 +75,23 @@ export class GoogleClient extends BaseApiClient {
       }
     };
 
-    return {
-      ...request,
-      model: this.normalizeModelName(actualModel),
-      provider: 'google',
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta'
-    };
+    if (isDirectApi) {
+      // For direct API calls, return Google's native format
+      return {
+        ...request,
+        model: this.normalizeModelName(actualModel),
+        provider: 'google',
+        baseURL: 'https://generativelanguage.googleapis.com/v1beta'
+      };
+    } else {
+      // For Cloudflare or proxy calls, use the proxy format
+      return {
+        ...request,
+        model: actualModel,
+        provider: 'google',
+        baseURL: gatewayUrl
+      };
+    }
   }
 
   private normalizeModelName(model: string): string {
@@ -157,20 +173,30 @@ export class GoogleClient extends BaseApiClient {
         throw new APIError('Google API key is required', 401);
       }
 
-      // Construct the endpoint URL correctly
-      const modelName = data.model;
-      const fullUrl = `${data.baseURL}/${modelName}:generateContent`;
+      const isDirectApi = !getGatewayUrls().google;
+      let fullUrl = url;
       
-      // Remove provider-specific fields from the request body
-      const { model, provider, baseURL, ...requestBody } = data;
+      if (isDirectApi) {
+        // For direct API, construct the endpoint URL correctly
+        const modelName = data.model;
+        fullUrl = `${data.baseURL}/${modelName}:generateContent`;
+        
+        // Remove provider-specific fields from the request body
+        const { model, provider, baseURL, ...requestBody } = data;
+        data = requestBody;
+      }
 
       const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
+          ...(isDirectApi ? {
+            'x-goog-api-key': apiKey
+          } : {
+            'Authorization': `Bearer ${apiKey}`
+          })
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(data)
       });
 
       if (!response.ok) {
@@ -189,13 +215,18 @@ export class GoogleClient extends BaseApiClient {
 
       const responseData = await response.json();
 
-      // Transform response to match our expected format
-      return {
-        candidates: responseData.candidates || [],
-        promptFeedback: responseData.promptFeedback || {},
-      };
+      // Transform response if needed for direct API calls
+      if (isDirectApi && responseData) {
+        // If it's a direct API response, ensure it matches our expected format
+        return {
+          candidates: responseData.candidates || [],
+          promptFeedback: responseData.promptFeedback || {},
+        };
+      }
 
-    } catch (error: any) {
+      return responseData;
+
+    } catch (error) {
       if (error instanceof APIError) {
         throw error;
       }

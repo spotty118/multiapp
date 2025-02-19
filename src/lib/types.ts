@@ -1,22 +1,22 @@
-export type Provider = 'openai' | 'cloudflare' | 'google' | 'openrouter' | 'anthropic';
-export type ProviderType = Provider;
+export type ProviderType = 'openai' | 'anthropic' | 'google' | 'cloudflare' | 'openrouter';
 
-export type ModelCapability = 'chat' | 'code' | 'analysis' | 'vision';
-
-export interface ProviderInfo {
-  type: Provider;
+export interface Provider {
+  type: ProviderType;
   name: string;
   description: string;
   requiresKey: boolean;
+  supportsProxy: boolean;
   capabilities: ModelCapability[];
 }
+
+export type ModelCapability = 'chat' | 'code' | 'analysis' | 'vision';
 
 export interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
-  provider: Provider;
+  provider: ProviderType;
   model: string;
 }
 
@@ -25,24 +25,30 @@ export interface Chat {
   title: string;
   messages: Message[];
   createdAt: number;
-  provider: Provider;
+  provider: ProviderType;
   model: string;
 }
 
 export interface ApiKeys {
   openai?: string;
-  cloudflare?: string;
+  anthropic?: string;
   google?: string;
   openrouter?: string;
+}
+
+export interface GatewayURLs {
+  openai?: string;
   anthropic?: string;
+  google?: string;
+  openrouter?: string;
 }
 
 export interface Model {
   id: string;
   name: string;
-  provider: Provider;
-  capabilities: ModelCapability[];
-  context_length: number;
+  provider: ProviderType;
+  capabilities?: ModelCapability[];
+  context_length?: number;
   isAuto?: boolean;
   description?: string;
 }

@@ -25,16 +25,8 @@ export const ModelDropdown = ({ provider, model, onModelChange }: ModelDropdownP
       setModels([]);
       setError(null);
       setAutoSelectedModel(null);
-
-      // Immediately select a valid model for OpenAI
-      if (provider === 'openai') {
-        const defaultModel = 'gpt-3.5-turbo'; // Example default model for OpenAI
-        onModelChange(defaultModel);
-      } else {
-        // Auto-select the default "auto" model for other providers
-        onModelChange('auto');
-      }
-
+      // Auto-select the default "auto" model for the new provider
+      onModelChange('auto');
       previousProvider.current = provider;
     }
 
@@ -51,7 +43,7 @@ export const ModelDropdown = ({ provider, model, onModelChange }: ModelDropdownP
         setModels(providerModels);
         
         // If auto is selected, get the best model
-        if (model === 'auto' && provider !== 'openai') {
+        if (model === 'auto') {
           const bestModel = selectBestModel(provider, providerModels);
           setAutoSelectedModel(bestModel);
         }

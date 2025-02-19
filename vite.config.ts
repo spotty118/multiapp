@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api/chat': {
-        target: process.env.VITE_WORKER_URL || 'http://localhost:8787',
+      '/api': {
+        target: process.env.VITE_LOCAL_PROXY_URL || 'http://localhost:8787',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/chat/, '')
-      }
-    }
-  }
+        secure: false,
+      },
+    },
+  },
 });
