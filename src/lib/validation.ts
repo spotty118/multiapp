@@ -1,11 +1,11 @@
-import { Provider } from './types';
+import { ProviderType } from './types';
 
 interface KeyValidation {
   isValid: boolean;
   message?: string;
 }
 
-export function validateApiKey(provider: Provider, key: string): KeyValidation {
+export function validateApiKey(provider: ProviderType, key: string): KeyValidation {
   if (!key) {
     return {
       isValid: false,

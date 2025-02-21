@@ -3,6 +3,7 @@ import { Provider, ProviderType, Model } from './types';
 // Provider configurations
 export const providers: Record<ProviderType, Provider> = {
   openai: {
+    id: 'openai',
     type: 'openai',
     name: 'OpenAI',
     description: 'GPT-3.5, GPT-4, and DALL·E models',
@@ -11,6 +12,7 @@ export const providers: Record<ProviderType, Provider> = {
     capabilities: ['chat', 'code', 'analysis']
   },
   anthropic: {
+    id: 'anthropic',
     type: 'anthropic',
     name: 'Anthropic',
     description: 'Claude models with long context support',
@@ -19,6 +21,7 @@ export const providers: Record<ProviderType, Provider> = {
     capabilities: ['chat', 'code', 'analysis']
   },
   google: {
+    id: 'google',
     type: 'google',
     name: 'Google AI',
     description: 'Gemini series models including Pro 1.5',
@@ -26,15 +29,8 @@ export const providers: Record<ProviderType, Provider> = {
     supportsProxy: true,
     capabilities: ['chat', 'code', 'analysis', 'vision']
   },
-  cloudflare: {
-    type: 'cloudflare',
-    name: 'Cloudflare',
-    description: 'Workers AI models',
-    requiresKey: false,
-    supportsProxy: false,
-    capabilities: ['chat']
-  },
   openrouter: {
+    id: 'openrouter',
     type: 'openrouter',
     name: 'OpenRouter',
     description: 'Access to multiple model providers',
@@ -218,42 +214,6 @@ const getProviderStaticModels = async (provider: ProviderType): Promise<Model[]>
         }
       ];
 
-    case 'cloudflare':
-      return [
-        {
-          id: '@cf/mistral/mistral-7b-instruct-v0.1',
-          name: 'Mistral 7B Instruct',
-          provider: 'cloudflare',
-          capabilities: ['chat'],
-          context_length: 8192,
-          description: 'Efficient open-source model'
-        },
-        {
-          id: '@cf/meta/llama-2-70b-chat-int8',
-          name: 'Llama 2 70B Chat',
-          provider: 'cloudflare',
-          capabilities: ['chat', 'code'],
-          context_length: 4096,
-          description: 'Largest Llama 2 model optimized for chat'
-        },
-        {
-          id: '@cf/thebloke/neural-chat-7b-v3-1-awq',
-          name: 'Neural Chat 7B',
-          provider: 'cloudflare',
-          capabilities: ['chat'],
-          context_length: 8192,
-          description: 'Optimized chat model with good performance'
-        },
-        {
-          id: '@cf/thebloke/codellama-34b-instruct-awq',
-          name: 'CodeLlama 34B Instruct',
-          provider: 'cloudflare',
-          capabilities: ['chat', 'code'],
-          context_length: 16384,
-          description: 'Specialized for code-related tasks'
-        }
-      ];
-
     case 'openrouter':
       return [
         {
@@ -333,12 +293,6 @@ export const selectBestModel = (provider: ProviderType, models: Model[]): string
              availableModels.find(m => m.id === 'gemini-pro')?.id ||
              availableModels[0]?.id;
 
-    case 'cloudflare':
-      // Prefer largest available model
-      return availableModels.find(m => m.id.includes('70b'))?.id ||
-             availableModels.find(m => m.id.includes('mistral'))?.id ||
-             availableModels[0]?.id;
-
     case 'openrouter':
       // Prefer GPT-4 Turbo or Claude 3
       return availableModels.find(m => m.id === 'openai/gpt-4-turbo-preview')?.id ||
@@ -366,8 +320,6 @@ export const getDefaultModel = (type: ProviderType): string => {
       return 'claude-3-sonnet-20240229';
     case 'google':
       return 'gemini-1.5-pro';
-    case 'cloudflare':
-      return '@cf/mistral/mistral-7b-instruct-v0.1';
     default:
       return '';
   }
@@ -388,7 +340,7 @@ export const getModelDisplay = (providerType: ProviderType, modelId: string): st
 
   // Handle OpenRouter format (provider/model)
   if (modelId.includes('/')) {
-    const [provider, model] = modelId.split('/');
+    const [_provider, model] = modelId.split('/');
     displayName = model;
   }
 

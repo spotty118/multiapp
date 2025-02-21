@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertCircle, RefreshCw, Terminal, ExternalLink } from 'lucide-react';
+import { AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -49,10 +49,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private is502Error(): boolean {
     const { error } = this.state;
-    return error?.message?.includes('502') || 
-           error?.message?.includes('Bad Gateway') ||
-           error?.message?.toLowerCase().includes('vite') ||
-           error?.message?.includes('node_modules/.vite');
+    return Boolean(
+      error?.message?.includes('502') || 
+      error?.message?.includes('Bad Gateway') ||
+      error?.message?.toLowerCase().includes('vite') ||
+      error?.message?.includes('node_modules/.vite')
+    );
   }
 
   public render() {

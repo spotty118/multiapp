@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StopCircle, Trash2 } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
-import { Chat, Message } from '../lib/types';
+import type { Chat } from '../lib/types';
 import { ChatInput } from './ChatInput';
 import { ModelDropdown } from './ModelDropdown';
 import { ProxyDialog } from './ProxyDialog';

@@ -15,13 +15,13 @@ export const ProviderList = ({ value, onChange, disabled }: ProviderListProps) =
       <h3 className="text-sm font-medium text-zinc-900 mb-3">AI Provider</h3>
       <div className="space-y-2">
         {Object.values(providers).map((provider) => {
-          const isSelected = value === provider.type;
-          const Icon = getProviderIcon(provider.type);
+          const isSelected = value === provider.id;
+          const Icon = getProviderIcon(provider.id);
           
           return (
             <button
-              key={provider.type}
-              onClick={() => !disabled && onChange(provider.type)}
+              key={provider.id}
+              onClick={() => !disabled && onChange(provider.id)}
               disabled={disabled}
               className={`
                 w-full flex items-center gap-3 p-3 rounded-lg transition-colors

@@ -19,21 +19,7 @@ interface OpenRouterModelsResponse {
   data: OpenRouterModel[];
 }
 
-interface OpenRouterCompletion {
-  id: string;
-  choices: Array<{
-    message: {
-      role: string;
-      content: string;
-    };
-    finish_reason?: string;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
+// Unused interface removed
 
 export class OpenRouterClient extends BaseApiClient {
   protected formatRequest(message: string, model: string) {
@@ -110,8 +96,8 @@ export class OpenRouterClient extends BaseApiClient {
     } catch (error) {
       debug.logError('openrouter', error);
       throw new APIError(
-        `Failed to fetch models: ${error.message}`,
-        error.status || 500
+        `Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`,
+        500
       );
     }
   }
@@ -151,17 +137,17 @@ export class OpenRouterClient extends BaseApiClient {
       .map(model => {
         const processedModel = {
           id: model.id,
-          name: this.formatModelName(model),
+          name: model.name,
           provider: 'openrouter',
-          capabilities: this.getModelCapabilities(model),
-          context_length: this.estimateContextLength(model),
+          capabilities: ['chat', 'code'],
+          context_length: model.context_length || 4096,
           description: model.description || `${model.name} model available through OpenRouter`
         };
         debug.log(`Processed model: ${processedModel.id}`, 'info');
         return processedModel;
       });
 
-    const sortedModels = this.sortModels(processedModels);
+    const sortedModels = processedModels as Model[];
     debug.log(`Returning ${sortedModels.length + 1} models (including auto)`, 'info');
 
     return [...models, ...sortedModels];
@@ -192,39 +178,7 @@ export class OpenRouterClient extends BaseApiClient {
     return !isExcluded;
   }
 
-  private sortModels(models: Model[]): Model[] {
-    debug.log('Sorting OpenRouter models', 'info');
-
-    return models.sort((a, b) => {
-      // Sort first by provider priority
-      const getProviderScore = (id: string) => {
-        if (id.startsWith('openai/')) return 6;
-        if (id.startsWith('anthropic/')) return 5;
-        if (id.startsWith('google/')) return 4;
-        if (id.startsWith('mistralai/')) return 3;
-        if (id.startsWith('meta-llama/')) return 2;
-        if (id.startsWith('perplexity/')) return 1;
-        return 0;
-      };
-
-      const scoreA = getProviderScore(a.id);
-      const scoreB = getProviderScore(b.id);
-
-      if (scoreA !== scoreB) {
-        return scoreB - scoreA;
-      }
-
-      // Then by capabilities count
-      const capA = a.capabilities.length;
-      const capB = b.capabilities.length;
-      if (capA !== capB) {
-        return capB - capA;
-      }
-
-      // Finally by name
-      return a.name.localeCompare(b.name);
-    });
-  }
+  // Unused method removed
 
   // ... rest of the methods remain the same ...
 }

@@ -116,7 +116,7 @@ export class VirtualProxyServer extends EventEmitter {
     
     // Clean up stale pending requests
     for (const [requestId, timestamp] of this.stats.pendingRequests.entries()) {
-      if (now - timestamp > this.REQUEST_TIMEOUT) {
+      if (typeof timestamp === 'number' && (now - timestamp) > this.REQUEST_TIMEOUT) {
         this.log(`Request ${requestId} timed out and will be removed`, 'warning');
         this.stats.pendingRequests.delete(requestId);
       }
@@ -149,15 +149,19 @@ export class VirtualProxyServer extends EventEmitter {
       this.stats.pendingRequests.set(request.id, true);
       await request.execute();
     } catch (error) {
-      const shouldRetry = 
-        !this.ERROR_CODES_NO_RETRY.has(error.status) &&
-        (!request.retries || request.retries < this.MAX_RETRIES);
-
-      if (shouldRetry) {
-        request.retries = (request.retries || 0) + 1;
-        this.log(`Retrying request ${request.id} (attempt ${request.retries}/${this.MAX_RETRIES})`, 'warning');
-        this.stats.requestQueue.push(request);
-        await this.delay(this.RETRY_DELAY * request.retries);
+      if (error && typeof error === 'object' && 'status' in error) {
+        const statusCode = error.status as number;
+        if (!this.ERROR_CODES_NO_RETRY.has(statusCode)) {
+          const shouldRetry = !request.retries || request.retries < this.MAX_RETRIES;
+          if (shouldRetry) {
+            request.retries = (request.retries || 0) + 1;
+            this.log(`Retrying request ${request.id} (attempt ${request.retries}/${this.MAX_RETRIES})`, 'warning');
+            this.stats.requestQueue.push(request);
+            await this.delay(this.RETRY_DELAY * request.retries);
+          }
+        }
+      } else {
+        this.log(`Request ${request.id} failed: ${error instanceof Error ? error.message : String(error)}`, 'error');
       }
     } finally {
       this.stats.pendingRequests.delete(request.id);
@@ -211,7 +215,7 @@ export class VirtualProxyServer extends EventEmitter {
       this.log('Virtual proxy server started successfully', 'success');
     } catch (error) {
       this.running = false;
-      this.log(`Failed to start proxy server: ${error.message}`, 'error');
+      this.log(`Failed to start proxy server: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       throw error;
     }
   }
@@ -245,7 +249,7 @@ export class VirtualProxyServer extends EventEmitter {
       this.emit('stopped');
       this.log('Virtual proxy server stopped successfully', 'success');
     } catch (error) {
-      this.log(`Error stopping proxy server: ${error.message}`, 'error');
+      this.log(`Error stopping proxy server: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
       throw error;
     }
   }
@@ -295,7 +299,12 @@ export class VirtualProxyServer extends EventEmitter {
             this.log(`Request ${requestId} completed successfully`, 'success');
             resolve(result);
           } catch (error) {
-            this.log(`Request ${requestId} failed: ${error.message}`, 'error');
+            if (error && typeof error === 'object' && 'status' in error) {
+              const statusCode = error.status as number;
+              this.log(`Request ${requestId} failed with status code ${statusCode}`, 'error');
+            } else {
+              this.log(`Request ${requestId} failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+            }
             reject(error);
           }
         }

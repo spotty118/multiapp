@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Sparkles, Loader2, Code, CheckCircle2, Brain, Eye, Wand2 } from 'lucide-react';
-import { Model, Provider, ProviderType, ModelCapability } from '../lib/types';
+import type { Model, ProviderType, ModelCapability } from '../lib/types';
 import { getProviderModels, selectBestModel } from '../lib/providers';
 
 interface ModelDropdownProps {

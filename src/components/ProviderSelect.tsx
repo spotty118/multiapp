@@ -1,16 +1,17 @@
 import * as Select from '@radix-ui/react-select';
-import { Provider } from '../lib/types';
+import { ProviderType } from '../lib/types';
+// Removed unused import
 import { Check } from 'lucide-react';
 
 interface ProviderSelectProps {
-  value: Provider;
-  onChange: (value: Provider) => void;
+  value: ProviderType;
+  onChange: (value: ProviderType) => void;
   disabled?: boolean;
 }
 
 export const ProviderSelect = ({ value, onChange, disabled }: ProviderSelectProps) => {
   return (
-    <Select.Root value={value} onValueChange={onChange as (value: string) => void} disabled={disabled}>
+    <Select.Root value={value} onValueChange={onChange} disabled={disabled}>
       <Select.Trigger className="w-full inline-flex items-center justify-between rounded px-4 py-2 text-sm gap-2 bg-white border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
         <Select.Value />
       </Select.Trigger>

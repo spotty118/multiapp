@@ -58,14 +58,15 @@ export const router = createBrowserRouter([
   },
 ], {
   future: {
-    v7_startTransition: true,              // Enable React 18 transitions
+    // Enable React 18 transitions
+    // v7_startTransition removed as it's not supported in current version              // Enable React 18 transitions
     v7_relativeSplatPath: true,            // Enable relative splat paths
     v7_fetcherPersist: true,              // Persist fetcher results
     v7_normalizeFormMethod: true,          // Normalize form methods
     v7_partialHydration: true,             // Enable partial hydration
-    v7_prependBasename: true,              // Enable prepending basename
-    v7_skipEntireTreeOnNullChild: true,    // Skip entire tree on null child
-    v7_unwrapElementsByDefault: true,      // Unwrap elements by default
-    v7_skipActionErrorRevalidation: true   // Skip revalidation on action errors
+    // v7_prependBasename removed as it's not supported              // Enable prepending basename
+    // v7_skipEntireTreeOnNullChild removed as it's not supported    // Skip entire tree on null child
+    // v7_unwrapElementsByDefault removed as it's not supported      // Unwrap elements by default
+    // v7_skipActionErrorRevalidation removed as it's not supported   // Skip revalidation on action errors
   }
 });

@@ -1,7 +1,21 @@
-import { BaseApiClient } from './base';
-import { Model } from '../types';
+import { Model } from '../lib/types';
+
+interface CloudflareModelsResponse {
+  data: Array<{
+    id: string;
+    capabilities: string[];
+    context_length: number;
+  }>;
+}
+
+abstract class BaseApiClient {
+  abstract listModels(): Promise<Model[]>;
+}
 
 export class CloudflareClient extends BaseApiClient {
+  async listModels(): Promise<Model[]> {
+    throw new Error('CloudflareClient.listModels() not implemented');
+  }
   // ... other methods remain the same ...
 
   protected parseModelsResponse(response: CloudflareModelsResponse): Model[] {
@@ -33,7 +47,7 @@ export class CloudflareClient extends BaseApiClient {
           name: model.id.split('-')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' '),
-          provider: 'cloudflare'
+          provider: 'openai' as const
         };
       }
     });

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { User } from 'lucide-react';
+// Removed unused import
 import { Message } from '../lib/types';
 import { getProviderIcon } from './ProviderIcons';
 import { getModelDisplay } from '../lib/providers';
@@ -10,7 +11,8 @@ interface ChatMessageProps {
 
 const ChatMessageComponent = ({ message }: ChatMessageProps) => {
   const isUser = message.role === 'user';
-  const ProviderIcon = !isUser ? getProviderIcon(message.provider) : null;
+  const provider = message.provider;
+  const ProviderIcon = !isUser && provider ? getProviderIcon(provider) : null;
   
   return (
     <div 
@@ -31,7 +33,9 @@ const ChatMessageComponent = ({ message }: ChatMessageProps) => {
           {isUser ? (
             <User className="w-6 h-6" />
           ) : (
-            <ProviderIcon className="w-6 h-6" />
+            ProviderIcon && (
+              <ProviderIcon className="w-6 h-6" />
+            )
           )}
         </div>
         

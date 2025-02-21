@@ -31,7 +31,7 @@ export function createApiClient(providerType: ProviderType) {
       case 'google':
         client = new GoogleClient(providerType);
         break;
-      case 'cloudflare':
+      // case 'cloudflare': // Removed as it's not in ProviderType
         client = new CloudflareClient(providerType);
         break;
       case 'openrouter':

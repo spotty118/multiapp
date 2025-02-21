@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MessagePanel } from './MessagePanel';
 import { Sidebar } from './Sidebar';
-import { Chat, Message, Provider, APIError } from '../lib/types';
+import { Chat, Message, APIError, ProviderType } from '../lib/types';
 import { createApiClient } from '../lib/api/factory';
 import { getDefaultModel } from '../lib/providers';
 import { saveChat, deleteChat } from '../lib/store';
@@ -59,6 +59,10 @@ export function ChatView({ initialChats }: ChatViewProps) {
 
   // Find current chat
   const currentChat = chatId ? chats.find(c => c.id === chatId) : ensureDefaultChat();
+
+  const isAPIError = (error: unknown): error is APIError => {
+    return typeof error === 'object' && error !== null && 'status' in error;
+  };
 
   const handleSend = async (content: string) => {
     if (!currentChat) return;
@@ -126,21 +130,23 @@ export function ChatView({ initialChats }: ChatViewProps) {
       saveChat(finalChat);
 
     } catch (err) {
-      if (err instanceof APIError) {
-        // Format API errors for better user feedback
-        let errorMessage = err.message;
-        
-        if (err.status === 401) {
-          errorMessage = `Authentication failed for ${currentChat.provider}. Please check your API key in settings.`;
-        } else if (err.status === 0 || err.message.includes('network')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
-        } else if (err.status >= 500) {
-          errorMessage = `Server error (${err.status}). Please try again later.`;
+      if (isAPIError(err)) {
+        const status = err.status;
+        const message = err.message;
+
+        if (status === 401) {
+          setError(`Authentication failed for ${currentChat.provider}. Please check your API key in settings.`);
+        } else if (status === 0 || message.includes('network')) {
+          setError('Network error. Please check your internet connection and try again.');
+        } else if (typeof status === 'number' && status >= 500) {
+          setError(`Server error (${status}). Please try again later.`);
+        } else {
+          setError(message);
         }
-        
-        setError(errorMessage);
-      } else if (err.message !== 'Request cancelled') {
-        setError(err instanceof Error ? err.message : 'Failed to send message');
+      } else if (err instanceof APIError) {
+        setError(err.message);
+      } else {
+        setError('Failed to send message');
       }
 
       // Revert the chat to its previous state if there was an error
@@ -193,19 +199,18 @@ export function ChatView({ initialChats }: ChatViewProps) {
     }
   };
 
-  const handleProviderChange = (provider: Provider) => {
+  const handleProviderChange = (provider: ProviderType) => {
     if (!currentChat) return;
 
     const updatedChat = {
-      ...currentChat,
       provider,
       model: getDefaultModel(provider)
     };
 
     setChats(prev => prev.map(c => 
-      c.id === updatedChat.id ? updatedChat : c
+      c.id === currentChat.id ? { ...currentChat, ...updatedChat } : c
     ));
-    saveChat(updatedChat);
+    saveChat({ ...currentChat, ...updatedChat });
   };
 
   const handleModelChange = (model: string) => {

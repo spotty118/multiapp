@@ -231,7 +231,7 @@ export class GoogleClient extends BaseApiClient {
         throw error;
       }
       throw new APIError(
-        error.message || 'Failed to make request to Google API',
+        (error instanceof Error ? error.message : 'Failed to make request to Google API'),
         500,
         'google_api_error'
       );

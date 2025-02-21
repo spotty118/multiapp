@@ -40,8 +40,6 @@ export const ChatInput = ({
   };
 
   // Determine error type for appropriate UI feedback
-  const isProxyError = error?.toLowerCase().includes('proxy') || 
-                      error?.toLowerCase().includes('connection refused');
   const isNetworkError = error?.toLowerCase().includes('network') || 
                         error?.toLowerCase().includes('unable to connect') ||
                         error?.toLowerCase().includes('failed to fetch');

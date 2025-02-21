@@ -1,7 +1,19 @@
-export type ProviderType = 'openai' | 'anthropic' | 'google' | 'cloudflare' | 'openrouter';
+export type ProviderType = 'openai' | 'anthropic' | 'google' | 'openrouter';
 
 export interface Provider {
-  type: ProviderType;
+  id: ProviderType;
+  type: string;
+  name: string;
+  description: string;
+  requiresKey: boolean;
+  supportsProxy: boolean;
+  capabilities: string[];
+}
+
+// Alias for backward compatibility
+// Provider interface defined above
+
+export interface ProviderDetails {
   name: string;
   description: string;
   requiresKey: boolean;

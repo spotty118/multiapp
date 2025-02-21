@@ -59,11 +59,11 @@ class Debug {
     this.log('Logs cleared');
   }
 
-  formatResponse(provider: ProviderType, data: any): string {
+  formatResponse(data: any): string {
     try {
       return JSON.stringify(data, null, 2);
     } catch (error) {
-      return `[Error formatting response: ${error.message}]`;
+      return `[Error formatting response: ${error instanceof Error ? error.message : String(error)}]`;
     }
   }
 
@@ -89,7 +89,7 @@ class Debug {
 
     this.log(`Response from ${provider}:`, 'info');
     this.log(`Status: ${status}`, 'info');
-    this.log(`Body: ${this.formatResponse(provider, data)}`, 'info');
+    this.log(`Body: ${this.formatResponse(data)}`, 'info');
   }
 
   // Helper method for logging errors

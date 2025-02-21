@@ -21,7 +21,7 @@ export function VirtualTerminal({ onReady }: VirtualTerminalProps) {
           background: '#1a1b26',
           foreground: '#a9b1d6',
           cursor: '#f6f6f4',
-          selection: '#33467c',
+          // selection color handled by CSS
           black: '#32344a',
           red: '#f7768e',
           green: '#9ece6a',

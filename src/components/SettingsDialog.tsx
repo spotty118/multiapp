@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Settings, X, AlertCircle, CheckCircle } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { Provider } from '../types';
+import { ProviderType } from '../lib/types';
+
 import { saveApiKeys, getApiKeys, saveGatewayUrls, getGatewayUrls } from '../lib/store';
 import { validateApiKey } from '../lib/validation';
 
@@ -9,16 +10,16 @@ export function SettingsDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [apiKeys, setApiKeys] = useState(getApiKeys());
   const [gatewayUrls, setGatewayUrls] = useState(getGatewayUrls());
-  const [keyValidation, setKeyValidation] = useState<Record<Provider, { isValid: boolean; message?: string }>>({});
+  const [keyValidation, setKeyValidation] = useState<Record<ProviderType, { isValid: boolean; message?: string }>>({ 'openai': { isValid: true }, 'google': { isValid: true }, 'anthropic': { isValid: true }, 'openrouter': { isValid: true } });
 
   // Clear validation on dialog close
   useEffect(() => {
     if (!isOpen) {
-      setKeyValidation({});
+      setKeyValidation({ 'openai': { isValid: true }, 'google': { isValid: true }, 'anthropic': { isValid: true }, 'openrouter': { isValid: true } });
     }
   }, [isOpen]);
 
-  const handleApiKeyChange = (provider: Provider, value: string) => {
+  const handleApiKeyChange = (provider: ProviderType, value: string) => {
     const trimmedValue = value.trim();
     const validation = validateApiKey(provider, trimmedValue);
     
@@ -32,13 +33,13 @@ export function SettingsDialog() {
     saveApiKeys(newKeys);
   };
 
-  const handleGatewayUrlChange = (provider: Provider, value: string) => {
+  const handleGatewayUrlChange = (provider: ProviderType, value: string) => {
     const newUrls = { ...gatewayUrls, [provider]: value.trim() };
     setGatewayUrls(newUrls);
     saveGatewayUrls(newUrls);
   };
 
-  const renderKeyValidation = (provider: Provider) => {
+  const renderKeyValidation = (provider: ProviderType) => {
     const validation = keyValidation[provider];
     if (!validation) return null;
 
@@ -104,17 +105,17 @@ export function SettingsDialog() {
                       id={`${provider}-key`}
                       type="password"
                       autoComplete="off"
-                      value={apiKeys[provider as Provider] || ''}
-                      onChange={(e) => handleApiKeyChange(provider as Provider, e.target.value)}
+                      value={(apiKeys as Record<ProviderType, string>)[provider as ProviderType] || ''}
+                      onChange={(e) => handleApiKeyChange(provider as ProviderType, e.target.value)}
                       className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
-                        keyValidation[provider as Provider]?.isValid === false
+                        keyValidation[provider as ProviderType]?.isValid === false
                           ? 'border-red-300 focus:ring-red-500'
                           : 'border-zinc-200 focus:ring-indigo-500'
                       }`}
                       placeholder={provider === 'openrouter' ? 'sk-or-...' : 'sk-...'}
                       spellCheck="false"
                     />
-                    {renderKeyValidation(provider as Provider)}
+                    {renderKeyValidation(provider as ProviderType)}
                     {provider === 'openrouter' && (
                       <p className="text-xs text-zinc-500">
                         Get your API key from{' '}
@@ -149,8 +150,8 @@ export function SettingsDialog() {
                     <input
                       id={`${provider}-url`}
                       type="text"
-                      value={gatewayUrls[provider as Provider] || ''}
-                      onChange={(e) => handleGatewayUrlChange(provider as Provider, e.target.value)}
+                      value={(gatewayUrls as Record<ProviderType, string>)[provider as ProviderType] || ''}
+                      onChange={(e) => handleGatewayUrlChange(provider as ProviderType, e.target.value)}
                       className="w-full px-3 py-2 rounded-lg border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder={placeholder}
                       spellCheck="false"

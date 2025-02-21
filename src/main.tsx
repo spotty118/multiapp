@@ -18,7 +18,6 @@ const initialize = async () => {
       <StrictMode>
         <RouterProvider 
           router={router}
-          hydrationData={{}} // Add hydration data if needed
         />
       </StrictMode>
     )

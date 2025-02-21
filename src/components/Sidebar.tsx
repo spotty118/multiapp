@@ -1,6 +1,6 @@
 import { MessageSquare, Trash2, Plus, Pencil, Check, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import type { Chat, Provider } from '../lib/types';
+import type { Chat, ProviderType } from '../lib/types';
 import { deleteChat } from '../lib/store';
 import { ProviderList } from './ProviderList';
 
@@ -9,8 +9,8 @@ interface SidebarProps {
   currentChat: Chat;
   onSelectChat: (chat: Chat) => void;
   onDeleteChat: (chatId: string) => void;
-  provider: Provider;
-  onProviderChange: (provider: Provider) => void;
+  provider: ProviderType;
+  onProviderChange: (provider: ProviderType) => void;
   model: string;
   onModelChange: (model: string) => void;
   onNewChat: () => void;

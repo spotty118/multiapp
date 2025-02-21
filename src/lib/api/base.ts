@@ -3,7 +3,7 @@ import { getApiKeys } from '../store';
 import { validateApiKey } from '../validation';
 import { getProvider } from '../providers';
 
-const API_TIMEOUT = 30000; // 30 seconds
+// const API_TIMEOUT = 30000; // 30 seconds - unused
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second base delay
 const SERVER_ERROR_MESSAGES: Record<number, string> = {
@@ -20,7 +20,7 @@ export abstract class BaseApiClient {
 
   constructor(providerType: ProviderType) {
     this.providerType = providerType;
-    this.apiKeys = getApiKeys();
+    this.apiKeys = getApiKeys() as Record<ProviderType, string>;
   }
 
   private validateRequest(message: string, model: string) {
@@ -37,14 +37,15 @@ export abstract class BaseApiClient {
     }
 
     // Validate API key if required
-    const provider = getProvider(this.providerType);
-    if (provider.requiresKey) {
+    const providerConfig = getProvider(this.providerType);
+    // Provider config already obtained above
+if (providerConfig.requiresKey) {
       const apiKey = this.apiKeys[this.providerType];
       const validation = validateApiKey(this.providerType, apiKey);
       
       if (!validation.isValid) {
         throw new APIError(
-          `Invalid API key for ${provider.name}: ${validation.message}`,
+          `Invalid API key for ${providerConfig.name}: ${validation.message}`,
           401,
           'invalid_api_key'
         );
@@ -82,7 +83,7 @@ export abstract class BaseApiClient {
     return (data.choices?.[0]?.message?.content || data.result?.response).trim();
   }
 
-  protected parseModelsResponse(response: any): Model[] {
+  protected parseModelsResponse(_response: any): Model[] {
     throw new APIError('Model fetching not implemented for this provider');
   }
 
@@ -117,14 +118,15 @@ export abstract class BaseApiClient {
       return await response.json();
     } catch (error) {
       // Don't retry if request was cancelled
-      if (error.name === 'AbortError') {
+      const err = error as Error;
+if (err.name === 'AbortError') {
         throw new APIError('Request cancelled');
       }
 
-      const isServerError = error instanceof APIError && error.status >= 500;
+      const isServerError = error instanceof APIError && (error.status ?? 0) >= 500;
       const shouldRetry = retryCount < MAX_RETRIES && (
-        error.name === 'TypeError' || // Network error
-        error.message.includes('fetch') || // Fetch error
+        err.name === 'TypeError' || // Network error
+        err.message.includes('fetch') || // Fetch error
         isServerError // Server error
       );
 
@@ -160,7 +162,8 @@ export abstract class BaseApiClient {
       };
     } catch (error) {
       // Enhance error message for common issues
-      if (error.message.includes('fetch')) {
+      const err = error as Error;
+if (err.message.includes('fetch')) {
         throw new APIError(
           'Network error. Please check your internet connection.',
           0,

@@ -24,7 +24,7 @@ export class OpenAIClient extends BaseApiClient {
     };
   }
 
-  protected async makeRequest(url: string, data: any): Promise<any> {
+  protected async makeRequest(_url: string, data: any): Promise<any> {
     const apiKey = getApiKeys().openai;
     if (!apiKey) {
       throw new Error('OpenAI API key is required');

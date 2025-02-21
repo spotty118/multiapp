@@ -1,4 +1,4 @@
-import { Provider } from '../lib/types';
+import { ProviderType } from '../lib/types';
 
 interface ProviderIconProps {
   className?: string;
@@ -97,17 +97,14 @@ export const OpenRouterIcon = ({ className = "w-5 h-5" }: ProviderIconProps) => 
   </svg>
 );
 
-export const getProviderIcon = (provider: Provider) => {
-  switch (provider) {
-    case 'openai':
-      return OpenAIIcon;
-    case 'anthropic':
-      return AnthropicIcon;
-    case 'google':
-      return GoogleIcon;
-    case 'cloudflare':
-      return CloudflareIcon;
-    case 'openrouter':
-      return OpenRouterIcon;
-  }
+const providerComponents: Record<ProviderType, React.ComponentType<ProviderIconProps>> = {
+  openai: OpenAIIcon,
+  anthropic: AnthropicIcon,
+  google: GoogleIcon,
+  openrouter: OpenRouterIcon,
+  // cloudflare removed as it's not in ProviderType
+};
+
+export const getProviderIcon = (provider: ProviderType) => {
+  return providerComponents[provider];
 };

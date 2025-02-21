@@ -4,6 +4,7 @@ import { virtualProxyServer } from '../lib/virtualProxy/VirtualProxyServer';
 
 interface ProxyStatusIndicatorProps {
   onStopServer?: () => void;
+  url?: string | null;
 }
 
 export function ProxyStatusIndicator({ onStopServer }: ProxyStatusIndicatorProps) {

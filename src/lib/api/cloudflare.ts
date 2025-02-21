@@ -1,5 +1,5 @@
 import { BaseApiClient } from './base';
-import { Model } from '../types';
+// Removed unused import
 
 export class CloudflareClient extends BaseApiClient {
   protected formatRequest(message: string, model: string) {
