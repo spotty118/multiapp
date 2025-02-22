@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StopCircle, Trash2 } from 'lucide-react';
-import { ChatMessage } from './ChatMessage';
+import { VirtualizedMessageList } from './VirtualizedMessageList';
 import type { Chat } from '../lib/types';
 import { ChatInput } from './ChatInput';
 import { ModelDropdown } from './ModelDropdown';
@@ -10,15 +10,34 @@ import { ProxyStatusIndicator } from './ProxyStatusIndicator';
 import { getLiteLLMProxyUrl } from '../lib/store';
 import { virtualProxyServer } from '../lib/virtualProxy/VirtualProxyServer';
 
+type ChatError = 
+  | { type: 'auth'; provider: string }
+  | { type: 'network' }
+  | { type: 'server'; status: number }
+  | { type: 'unknown'; message: string };
+
 interface MessagePanelProps {
   chat: Chat;
   onSend: (content: string) => Promise<void>;
   isLoading?: boolean;
-  error?: string | null;
+  error?: ChatError | null;
   onStopResponse?: () => void;
   onClearChat?: () => void;
   onModelChange?: (model: string) => void;
 }
+
+const formatErrorMessage = (error: ChatError): string => {
+  switch (error.type) {
+    case 'auth':
+      return `Authentication failed for ${error.provider}. Please check your API key in settings.`;
+    case 'network':
+      return 'Network error. Please check your internet connection and try again.';
+    case 'server':
+      return `Server error (${error.status}). Please try again later.`;
+    case 'unknown':
+      return error.message;
+  }
+};
 
 export const MessagePanel = ({
   chat,
@@ -69,6 +88,9 @@ export const MessagePanel = ({
     }
   };
 
+  // Format error message if error exists
+  const errorMessage = error ? formatErrorMessage(error) : null;
+
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-zinc-200">
       <header className="px-4 py-3 border-b border-zinc-200">
@@ -112,19 +134,10 @@ export const MessagePanel = ({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto min-h-0 py-4 space-y-4 scrollbar-thin">
-        {chat.messages.map((message) => (
-          <div key={message.id} className="px-4">
-            <ChatMessage message={message} />
-          </div>
-        ))}
-        {isLoading && (
-          <div className="px-4">
-            <div className="animate-pulse text-zinc-500">Thinking...</div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+      <VirtualizedMessageList 
+        messages={chat.messages} 
+        isLoading={isLoading} 
+      />
 
       <div className="border-t border-zinc-200">
         <div className="p-4">
@@ -133,7 +146,7 @@ export const MessagePanel = ({
             onRetry={lastFailedMessage ? handleRetry : undefined}
             provider={chat.provider}
             disabled={isLoading}
-            error={error}
+            error={errorMessage}
             lastMessage={lastFailedMessage || undefined}
           />
         </div>

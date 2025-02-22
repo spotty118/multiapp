@@ -2,6 +2,7 @@ import { EventEmitter } from '../events/EventEmitter';
 import { ProviderType } from '../types';
 import { APIError } from '../types';
 import { createApiClient } from '../api/factory';
+import { CircuitBreaker, CircuitBreakerState } from '../circuitBreaker';
 
 interface VirtualTerminal {
   writeln: (text: string) => void;
@@ -14,6 +15,7 @@ interface QueuedRequest {
   execute: () => Promise<any>;
   retries?: number;
   timeoutId?: NodeJS.Timeout;
+  priority?: 'high' | 'medium' | 'low';
 }
 
 interface RequestStats {
@@ -42,6 +44,7 @@ export class VirtualProxyServer extends EventEmitter {
   private readonly RATE_LIMIT = 50; // requests per minute
   private readonly ERROR_CODES_NO_RETRY = new Set([400, 401, 403, 404]);
   private readonly REQUEST_WINDOW = 60000; // 1 minute in milliseconds
+  private readonly circuitBreakers: Map<ProviderType, CircuitBreaker> = new Map();
   
   constructor() {
     super();
@@ -49,6 +52,16 @@ export class VirtualProxyServer extends EventEmitter {
     setInterval(() => this.cleanRequestWindow(), 10000);
     // Monitor queue health every 5 seconds
     setInterval(() => this.monitorQueueHealth(), 5000);
+
+    // Initialize circuit breakers for each provider
+    const providers: ProviderType[] = ['openai', 'anthropic', 'google'];
+    providers.forEach(provider => {
+      this.circuitBreakers.set(provider, new CircuitBreaker({
+        failureThreshold: 3,
+        resetTimeout: 30000, // 30 seconds
+        halfOpenMaxCalls: 2
+      }));
+    });
   }
 
   public setTerminal(terminal: VirtualTerminal) {
@@ -58,13 +71,13 @@ export class VirtualProxyServer extends EventEmitter {
   private log(message: string, level: 'info' | 'error' | 'warning' | 'success' = 'info') {
     const timestamp = new Date().toISOString();
     const colorCode = {
-      info: '\x1b[36m',    // Cyan
-      error: '\x1b[31m',   // Red
-      warning: '\x1b[33m', // Yellow
-      success: '\x1b[32m'  // Green
+      info: '[36m',    // Cyan
+      error: '[31m',   // Red
+      warning: '[33m', // Yellow
+      success: '[32m'  // Green
     }[level];
 
-    const logMessage = `${colorCode}[${timestamp}] ${message}\x1b[0m`;
+    const logMessage = `${colorCode}[${timestamp}] ${message}[0m`;
     if (this.terminal) {
       this.terminal.writeln(logMessage);
     } else {
@@ -77,6 +90,13 @@ export class VirtualProxyServer extends EventEmitter {
   }
 
   public getStatus() {
+    const circuitBreakerStatus = Object.fromEntries(
+      Array.from(this.circuitBreakers.entries()).map(([provider, breaker]) => [
+        provider,
+        breaker.getStatus()
+      ])
+    );
+
     return {
       running: this.running,
       uptime: this.stats.startTime ? Date.now() - this.stats.startTime : 0,
@@ -94,7 +114,8 @@ export class VirtualProxyServer extends EventEmitter {
         limit: this.RATE_LIMIT,
         remaining: Math.max(0, this.RATE_LIMIT - this.stats.requestWindow.length),
         resetsIn: this.getTimeUntilRateLimit()
-      }
+      },
+      circuitBreakers: circuitBreakerStatus
     };
   }
 
@@ -127,6 +148,14 @@ export class VirtualProxyServer extends EventEmitter {
       this.log(`Queue is nearing capacity (${this.stats.requestQueue.length}/${this.MAX_QUEUE_SIZE})`, 'warning');
     }
 
+    // Log circuit breaker status
+    for (const [provider, breaker] of this.circuitBreakers.entries()) {
+      const status = breaker.getStatus();
+      if (status.state !== CircuitBreakerState.CLOSED) {
+        this.log(`Circuit breaker for ${provider} is ${status.state}`, 'warning');
+      }
+    }
+
     // Log status if there are pending requests
     if (this.stats.pendingRequests.size > 0) {
       this.log(`Current pending requests: ${this.stats.pendingRequests.size}`, 'info');
@@ -142,6 +171,12 @@ export class VirtualProxyServer extends EventEmitter {
       return;
     }
 
+    // Sort queue by priority
+    this.stats.requestQueue.sort((a, b) => {
+      const priorityMap = { high: 0, medium: 1, low: 2, undefined: 1 };
+      return priorityMap[a.priority || 'medium'] - priorityMap[b.priority || 'medium'];
+    });
+
     const request = this.stats.requestQueue.shift();
     if (!request) return;
 
@@ -155,6 +190,7 @@ export class VirtualProxyServer extends EventEmitter {
           const shouldRetry = !request.retries || request.retries < this.MAX_RETRIES;
           if (shouldRetry) {
             request.retries = (request.retries || 0) + 1;
+            request.priority = 'high'; // Increase priority for retries
             this.log(`Retrying request ${request.id} (attempt ${request.retries}/${this.MAX_RETRIES})`, 'warning');
             this.stats.requestQueue.push(request);
             await this.delay(this.RETRY_DELAY * request.retries);
@@ -277,12 +313,18 @@ export class VirtualProxyServer extends EventEmitter {
       );
     }
 
+    const circuitBreaker = this.circuitBreakers.get(providerType);
+    if (!circuitBreaker) {
+      throw new APIError(`No circuit breaker found for provider: ${providerType}`);
+    }
+
     const requestId = crypto.randomUUID();
     
     return new Promise((resolve, reject) => {
       const request: QueuedRequest = {
         id: requestId,
         timestamp: Date.now(),
+        priority: 'medium',
         execute: async () => {
           try {
             if (signal?.aborted) {
@@ -292,9 +334,11 @@ export class VirtualProxyServer extends EventEmitter {
             this.stats.requestCount++;
             this.stats.requestWindow.push(Date.now());
 
-            // Create an API client for the provider
-            const client = createApiClient(providerType);
-            const result = await client.sendMessage(message, model);
+            // Execute request through circuit breaker
+            const result = await circuitBreaker.execute(async () => {
+              const client = createApiClient(providerType);
+              return await client.sendMessage(message, model);
+            });
 
             this.log(`Request ${requestId} completed successfully`, 'success');
             resolve(result);

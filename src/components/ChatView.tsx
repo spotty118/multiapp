@@ -7,6 +7,12 @@ import { createApiClient } from '../lib/api/factory';
 import { getDefaultModel } from '../lib/providers';
 import { saveChat, deleteChat } from '../lib/store';
 
+type ChatError = 
+  | { type: 'auth'; provider: string }
+  | { type: 'network' }
+  | { type: 'server'; status: number }
+  | { type: 'unknown'; message: string };
+
 interface ChatViewProps {
   initialChats: Chat[];
 }
@@ -16,8 +22,18 @@ export function ChatView({ initialChats }: ChatViewProps) {
   const { chatId } = useParams();
   const [chats, setChats] = useState<Chat[]>(initialChats);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ChatError | null>(null);
   const currentApiClient = useRef<ReturnType<typeof createApiClient> | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (currentApiClient.current) {
+        currentApiClient.current.stopResponse();
+        currentApiClient.current = null;
+      }
+    };
+  }, []);
 
   // Memoize the ensureDefaultChat function
   const ensureDefaultChat = useCallback((): Chat => {
@@ -134,19 +150,22 @@ export function ChatView({ initialChats }: ChatViewProps) {
         const status = err.status;
         const message = err.message;
 
+        let chatError: ChatError;
         if (status === 401) {
-          setError(`Authentication failed for ${currentChat.provider}. Please check your API key in settings.`);
+          chatError = { type: 'auth', provider: currentChat.provider };
         } else if (status === 0 || message.includes('network')) {
-          setError('Network error. Please check your internet connection and try again.');
+          chatError = { type: 'network' };
         } else if (typeof status === 'number' && status >= 500) {
-          setError(`Server error (${status}). Please try again later.`);
+          chatError = { type: 'server', status };
         } else {
-          setError(message);
+          chatError = { type: 'unknown', message };
         }
+        setError(chatError);
+
       } else if (err instanceof APIError) {
-        setError(err.message);
+        setError({ type: 'unknown', message: err.message });
       } else {
-        setError('Failed to send message');
+        setError({ type: 'unknown', message: 'Failed to send message' });
       }
 
       // Revert the chat to its previous state if there was an error
@@ -159,14 +178,14 @@ export function ChatView({ initialChats }: ChatViewProps) {
     }
   };
 
-  const handleStopResponse = () => {
+  const handleStopResponse = useCallback(() => {
     if (currentApiClient.current) {
       currentApiClient.current.stopResponse();
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     const newChat: Chat = {
       id: crypto.randomUUID(),
       title: 'New Chat',
@@ -179,9 +198,9 @@ export function ChatView({ initialChats }: ChatViewProps) {
     setChats(prev => [newChat, ...prev]);
     saveChat(newChat);
     navigate(`/chat/${newChat.id}`);
-  };
+  }, [currentChat, navigate]);
 
-  const handleDeleteChat = (chatIdToDelete: string) => {
+  const handleDeleteChat = useCallback((chatIdToDelete: string) => {
     // Don't delete the last chat
     if (chats.length === 1) return;
 
@@ -197,9 +216,9 @@ export function ChatView({ initialChats }: ChatViewProps) {
         handleNewChat();
       }
     }
-  };
+  }, [chats.length, chatId, navigate, handleNewChat]);
 
-  const handleProviderChange = (provider: ProviderType) => {
+  const handleProviderChange = useCallback((provider: ProviderType) => {
     if (!currentChat) return;
 
     const updatedChat = {
@@ -211,9 +230,9 @@ export function ChatView({ initialChats }: ChatViewProps) {
       c.id === currentChat.id ? { ...currentChat, ...updatedChat } : c
     ));
     saveChat({ ...currentChat, ...updatedChat });
-  };
+  }, [currentChat]);
 
-  const handleModelChange = (model: string) => {
+  const handleModelChange = useCallback((model: string) => {
     if (!currentChat) return;
 
     const updatedChat = {
@@ -225,7 +244,7 @@ export function ChatView({ initialChats }: ChatViewProps) {
       c.id === updatedChat.id ? updatedChat : c
     ));
     saveChat(updatedChat);
-  };
+  }, [currentChat]);
 
   // Ensure we always have a valid chat
   const chat = currentChat || ensureDefaultChat();
